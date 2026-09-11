@@ -1,0 +1,58 @@
+"""
+Task 4.1: Production-Grade RAG Pipeline with Chroma VectorDB and LangChain
+"""
+import os
+from typing import List
+from langchain_community.document_loaders import TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+
+class RAGSystem:
+    def __init__(self, collection_name: str = "rag_docs"):
+        self.embeddings = OpenAIEmbeddings()
+        self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        self.collection_name = collection_name
+        self.vector_store = None
+
+    def ingest_documents(self, file_paths: List[str]):
+        """Loads, splits, and indexes documents in VectorStore."""
+        docs = []
+        for path in file_paths:
+            if os.path.exists(path):
+                loader = TextLoader(path)
+                docs.extend(loader.load())
+        
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        splits = text_splitter.split_documents(docs)
+        
+        self.vector_store = Chroma.from_documents(
+            documents=splits,
+            embedding=self.embeddings,
+            collection_name=self.collection_name
+        )
+
+    def query(self, question: str) -> str:
+        """Executes similarity search and RAG generation chain."""
+        if not self.vector_store:
+            raise ValueError("Vector store is uninitialized. Ingest documents first.")
+
+        retriever = self.vector_store.as_retriever(search_kwargs={"k": 3})
+        
+        template = """Answer the question based only on the following context:
+{context}
+
+Question: {question}
+"""
+        prompt = ChatPromptTemplate.from_template(template)
+        
+        chain = (
+            {"context": retriever, "question": RunnablePassthrough()}
+            | prompt
+            | self.llm
+            | StrOutputParser()
+        )
+        return chain.invoke(question)
