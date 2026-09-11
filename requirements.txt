@@ -1,0 +1,15 @@
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.5.2
+scipy==1.14.1
+joblib==1.4.2
+torch==2.5.1
+transformers==4.46.3
+datasets==3.1.0
+sentence-transformers==3.3.1
+chromadb==0.5.20
+faiss-cpu==1.9.0.post1
+langchain==0.3.9
+langchain-community==0.3.8
+pytest==8.3.3
+pytest-cov==6.0.0
